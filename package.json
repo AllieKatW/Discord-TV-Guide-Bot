@@ -1,0 +1,29 @@
+{
+  "name": "discord-tv-guide-bot",
+  "version": "1.0.0",
+  "description": "A Discord bot that posts TV guide schedules, updates voice channel events, and runs refresh tasks.",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "schedule",
+    "tv guide",
+    "cron",
+    "discord.js",
+    "events"
+  ],
+  "author": "Allie Kat",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.9.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
+  }
+}

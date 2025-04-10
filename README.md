@@ -44,7 +44,8 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
     ```
     *Replace placeholder values with your actual IDs and paths.*
 
-*   **`schedule.js`:** Edit the file named `schedule.js` in the project root and define your TV schedule. Use the 24-hour format (HH:MM) and days (0=Sunday, 1=Monday, ..., 6=Saturday). You can also add images to be posted after the message or use Custom Messages for things like trivia or promotional posts.
+*   **`schedule.js`:** Edit the file named `schedule.js` in the project root and define your TV schedule. Use the 24-hour format (HH:MM) and days (0=Sunday, 1=Monday, ..., 6=Saturday).
+     *   You can also add images to be posted after the message or use Custom Messages for things like trivia or promotional posts. Custom Messages will be ignored in `!now` commands and event title updates.
     ```javascript
     // schedule.js
     const schedule = {

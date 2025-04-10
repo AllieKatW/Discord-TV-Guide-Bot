@@ -7,7 +7,7 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
 
 ## Features
 
-*   **Automatic Schedule Posting:** Posts messages to a specific text channel based on a defined schedule (e.g., every 30-60 minutes). (ex. `"Now Playing: The Simpsons, Up Next: House"`)
+*   **Automatic Schedule Posting:** Posts messages to a specific text channel based on a defined schedule (ex. every 30-60 minutes, `"Now Playing: The Simpsons, Up Next: House"`)
 *   **Scheduled Event Updates:** Maintains a Discord Voice Channel Event and automatically updates its name with the "Now Playing" show title according to the schedule.
 *   **`!now` Command:** Users can type `!now` in any channel the bot can read to instantly see the current program based on the schedule.
 *   **`!refresh` Command:** Runs a script of your choice to automatically refresh/fix your streaming setup when things break and you're not around to fix it manually (ex. Run a .ahk script that force closes your player, reopens it, switches window focus to Discord and triggers Discord keybinds to connect to the Voice Channel of your choice and resume Screen Share). Intended only for use on dedicated streaming machines.

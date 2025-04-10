@@ -90,7 +90,7 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
 *   Open a terminal or command prompt in your project folder (`discord-tv-guide`).
 *   Run the bot using: `node bot.js`
 *   The console will show logs as the bot connects, fetches channels, and sets up scheduled tasks. Keep this window open.
-*   (Optional) Use a process manager like `pm2` to keep the bot running reliably:
+*   **(Optional)**: Use a process manager like `pm2` to keep the bot running reliably:
     *   Install pm2: `npm install pm2 -g`
     *   Start the bot: `pm2 start bot.js --name "tv-guide-bot"`
     *   Monitor: `pm2 list` or `pm2 logs tv-guide-bot`

@@ -11,7 +11,7 @@ Reccommended for use with projects such as [VideoScheduler](https://github.com/J
 *   **Scheduled Event Updates:** Maintains a Discord Voice Channel Event and automatically updates its name with the "Now Playing" show title according to the schedule.
 *   **`!now` Command:** Users can type `!now` in any channel the bot can read to instantly see the current program based on the schedule.
 *   **`!refresh` Command:** Runs a script of your choice to automatically refresh/fix your streaming setup when things break and you're not around to fix it manually (ex. Run a .ahk script that force closes your player, reopens it, switches window focus to Discord and triggers Discord keybinds to connect to the Voice Channel of your choice and resume Screen Share). Intended only for use on dedicated streaming machines.
-    *   PLEASE NOTE: **This is likely against Discord TOS and can be dangerous if you don't know what you're doing** so I will not be including a sample script. USE AT YOUR OWN DISCRETION. There are no permissions checks in place for this so it can be used by ANY user.
+    *   PLEASE NOTE: **This is likely against Discord TOS and can be dangerous if you don't know what you're doing** so I will not be including a sample script. USE AT YOUR OWN DISCRETION. There are no permissions checks in place for this so it can be used by **ANY** user.
 *   **Customizable Schedule:** Easily define your weekly schedule (including show titles, images, and custom messages) in a separate file.
 
 ## Setup

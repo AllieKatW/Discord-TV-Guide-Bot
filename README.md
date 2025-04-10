@@ -1,4 +1,4 @@
-# Discord TV Guide Bot by Allie Kat
+# Discord TV Guide Bot
 
 This bot helps manage and display a TV schedule directly within your Discord server.
 It can automatically post schedule updates to a designated text channel and also update the name of a Voice Channel Event to show the current program.
@@ -9,7 +9,8 @@ You can also manually trigger a refresh script (I use AutoHotKey but you can use
 *   **Automatic Schedule Posting:** Posts messages to a specific text channel based on a defined schedule (e.g., every 30-60 minutes). (ex. `"Now Playing: The Simpsons, Up Next: House"`)
 *   **Scheduled Event Updates:** Maintains a Discord Voice Channel Event and automatically updates its name with the "Now Playing" show title according to the schedule.
 *   **`!now` Command:** Users can type `!now` in any channel the bot can read to instantly see the current program based on the schedule.
-*   **`!refresh` Command:** Forces the bot to manually update the Voice Channel Event name and trigger a specific local AutoHotkey script to automate a refresh of your streaming setup.
+*   **`!refresh` Command:** Runs a script of your choice to automatically refresh/fix your streaming setup when things break and you're not around to fix it manually (ex. Run a .ahk script that force closes your player, reopens it, switches window focus to Discord and triggers Discord keybinds to connect to the Voice Channel of your choice and resume Screen Share). Intended only for use on dedicated streaming machines.
+    *   PLEASE NOTE: This is likely against Discord TOS and since this can be dangerous if you don't know what you're doing, I will not be including a sample script. USE AT YOUR OWN DISCRETION. There are no permissions checks in place for this so it can be used by ANY user.
 *   **Customizable Schedule:** Easily define your weekly schedule (including show titles, images, and custom messages) in a separate file.
 
 ## Setup
@@ -18,7 +19,7 @@ You can also manually trigger a refresh script (I use AutoHotKey but you can use
 
 *   **Node.js:** Ensure you have Node.js (LTS version recommended) installed. Download from [nodejs.org](https://nodejs.org/).
 *   **Discord Bot Token:** You need a Bot Application and its Token from the [Discord Developer Portal](https://discord.com/developers/applications). Make sure the bot has the necessary Privileged Gateway Intents enabled (see below).
-*   **Discord Channel IDs:** Get the Channel ID for the text channel where you want scheduled posts to appear and the Channel ID for the voice channel where you want the event to be managed.
+*   **Discord Channel IDs:** Enable Developer Mode in Discord by visiting your Discord settings and going to "Advanced". You can then right click on any channel and select "Copy ID". You'll need this for the text channel where you want scheduled posts to appear and the voice channel where you want the event to be managed.
 *   **AutoHotkey:** If you plan to use the `!refresh` command, AutoHotkey (or your scripting language of choice) must be installed on the machine where the bot script will run, and the script path(s) must be correct.
 *   **AutoHotkey Scripts:** Prepare your `.ahk` script(s) that you want the `!refresh` command to execute.
 
@@ -43,6 +44,7 @@ You can also manually trigger a refresh script (I use AutoHotKey but you can use
     *Replace placeholder values with your actual IDs and paths.*
 
 *   **`schedule.js`:** Edit the file named `schedule.js` in the project root and define your TV schedule. Use the 24-hour format (HH:MM) and days (0=Sunday, 1=Monday, ..., 6=Saturday).
+*   You can also add images to be posted after the message or use Custom Messages for things like trivia or promotional posts.
     ```javascript
     // schedule.js
     const schedule = {
@@ -88,7 +90,7 @@ You can also manually trigger a refresh script (I use AutoHotKey but you can use
 *   Open a terminal or command prompt in your project folder (`discord-tv-guide`).
 *   Run the bot using: `node bot.js`
 *   The console will show logs as the bot connects, fetches channels, and sets up scheduled tasks. Keep this window open.
-*   (Optional but Recommended) Use a process manager like `pm2` to keep the bot running reliably:
+*   (Optional) Use a process manager like `pm2` to keep the bot running reliably:
     *   Install pm2: `npm install pm2 -g`
     *   Start the bot: `pm2 start bot.js --name "tv-guide-bot"`
     *   Monitor: `pm2 list` or `pm2 logs tv-guide-bot`
@@ -112,7 +114,7 @@ You can also manually trigger a refresh script (I use AutoHotKey but you can use
 ## Notes & Troubleshooting
 
 *   **Timezones:** The bot uses the local timezone of the machine it's running on. If your schedule is based on a different timezone, you might need to adjust the cron settings or use timezone handling in Node.js.
-*   **Schedule Changes:** If you modify `schedule.js` or `.env`, you must restart the `node bot.js` process (or use `pm2 restart tv-guide-bot`) for the changes to take effect.
+*   **Schedule Changes:** If you modify `schedule.js` or `.env`, you must restart the `node bot.js` process (or use `pm2 restart tv-guide-bot` if you have `pm2` set up) for the changes to take effect.
 *   **Permissions:** Most issues arise from missing permissions. Double-check that the bot has `View Channel`, `Send Messages`, `Manage Events`, and `Connect` permissions at the server or channel level, as needed.
 *   **Event Management:** The bot tries to manage one persistent event. If you manually delete the event created by the bot, it will create a new one on the next schedule trigger or `!refresh` command.
 *   **AHK Scripts:** Ensure the paths in `.env` are correct and the Node.js process has permission to execute those `.ahk` files. If you encounter errors during script execution, check the console logs for specific details provided by the `exec` function.

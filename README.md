@@ -2,8 +2,8 @@
 
 This bot helps manage and display a TV schedule directly within your Discord server.
 It can automatically post schedule updates to a designated text channel and also update the name of a Voice Channel Event to show the current program.
-You can also manually trigger a refresh script (I use AutoHotKey but you can use whatever you like!) for moments when your stream freezes/crashes.
-Reccommended for use with projects such as [VideoScheduler](https://github.com/JasonCampbell256/VideoScheduler), [ErsatzTV](https://github.com/ErsatzTV/ErsatzTV), [DisqueTV](https://github.com/vexorian/dizquetv) or [Tunarr](https://github.com/chrisbenincasa/tunarr).
+You can also manually trigger a refresh script (I use AutoHotKey but you can use whatever you like) for moments when your stream freezes/crashes.
+Recommended for use with projects such as [VideoScheduler](https://github.com/JasonCampbell256/VideoScheduler), [ErsatzTV](https://github.com/ErsatzTV/ErsatzTV), [DisqueTV](https://github.com/vexorian/dizquetv) or [Tunarr](https://github.com/chrisbenincasa/tunarr).
 
 ## Features
 

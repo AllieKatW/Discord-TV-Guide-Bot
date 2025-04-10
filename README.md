@@ -21,7 +21,7 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
 *   **Node.js:** Ensure you have Node.js (LTS version recommended) installed. Download from [nodejs.org](https://nodejs.org/).
 *   **Discord Bot Token:** You need a Bot Application and its Token from the [Discord Developer Portal](https://discord.com/developers/applications). Make sure the bot has the necessary Privileged Gateway Intents enabled (see below).
 *   **Discord Channel IDs:** Enable Developer Mode in Discord by visiting your Discord settings and going to "Advanced". You can then right click on any channel and select "Copy ID". You'll need this for the text channel where you want scheduled posts to appear and the voice channel where you want the event to be managed.
-*   **AutoHotkey:** If you plan to use the `!refresh` command, AutoHotkey (or your scripting language of choice) must be installed on the machine where the bot script will run, and the script path(s) must be correct.
+*   **AutoHotkey:** If you plan to use the `!refresh` command, [AutoHotkey](https://www.autohotkey.com/) (or your scripting language of choice) must be installed on the machine where the bot script will run, and the script path(s) must be correct.
 *   **AutoHotkey Scripts:** Prepare your `.ahk` script(s) that you want the `!refresh` command to execute.
 
 ### Project Setup:

@@ -100,7 +100,7 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
 ## Usage
 
 *   **Automatic Posts:** The bot will automatically post schedule updates to the channel specified by `DISCORD_CHANNEL_ID` according to the `schedule.js` file.
-*   **Event Name Updates:** The bot will automatically update the name of the Guild Scheduled Event linked to the voice channel specified by `TARGET_VOICE_CHANNEL_ID` whenever a new "Now Playing" show starts according to the schedule.
+*   **Event Name Updates:** The bot will automatically update the name of the Guild Scheduled Event linked to the voice channel specified by `TARGET_VOICE_CHANNEL_ID` whenever a new "Now Playing" show starts according to the schedule. If an event does not exist then it will create one. The bot will only edit events that it created itself, not by other users.
 *   **`!now` Command:**
     *   Type `!now` in any channel the bot can read.
     *   The bot will reply with the "Now Playing" and "Up Next" information for the schedule slot closest to the current time. It will ignore any `customMessage` entries in the schedule for this command.

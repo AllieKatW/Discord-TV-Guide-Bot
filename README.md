@@ -114,6 +114,7 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
 
 ## Notes & Troubleshooting
 
+*   **Why Voice Channels/Events instead of Stages/Channel Status?:** Stages have smaller screen real estate and Discord doesn't allow you to set voice channel statuses via API.
 *   **Timezones:** The bot uses the local timezone of the machine it's running on. If your schedule is based on a different timezone, you might need to adjust the cron settings or use timezone handling in Node.js.
 *   **Schedule Changes:** If you modify `schedule.js` or `.env`, you must restart the `node bot.js` process (or use `pm2 restart tv-guide-bot` if you have `pm2` set up) for the changes to take effect.
 *   **Permissions:** Most issues arise from missing permissions. Double-check that the bot has `View Channel`, `Send Messages`, `Manage Events`, and `Connect` permissions at the server or channel level, as needed.

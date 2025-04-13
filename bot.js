@@ -2,19 +2,25 @@
 require('dotenv').config();
 const {
     Client, GatewayIntentBits, Partials, PermissionsBitField, ChannelType,
-    ActivityType, Events, GuildScheduledEventPrivacyLevel, // Corrected Stage Level previously
-    GuildScheduledEventEntityType, GuildScheduledEventStatus // NEW Enums for Events
-} = require('discord.js');
+    ActivityType, Events, GuildScheduledEventPrivacyLevel,
+    GuildScheduledEventEntityType, GuildScheduledEventStatus,
+    EmbedBuilder // Keep for potential future use
+} = require('discord.js'); // Ensure PermissionsBitField and Events are imported
 const cron = require('node-cron');
-const { exec } = require('child_process'); // Using exec
+const { exec } = require('child_process');
 const schedule = require('./schedule');
 
 // --- Configuration from .env ---
 const token = process.env.DISCORD_BOT_TOKEN;
-const tvGuideChannelId = process.env.DISCORD_CHANNEL_ID;         // For scheduled text posts
-const targetVoiceChannelId = process.env.TARGET_VOICE_CHANNEL_ID; // VOICE Channel for the event
-const ahkScriptPath1 = process.env.AHK_SCRIPT_PATH_1;           // Path to the single AHK script
+const tvGuideChannelId = process.env.DISCORD_CHANNEL_ID;
+const targetVoiceChannelId = process.env.TARGET_VOICE_CHANNEL_ID;
+const ahkScriptPath1 = process.env.AHK_SCRIPT_PATH_1;
 const COMMAND_PREFIX = '!';
+
+// --- Constants ---
+const DISCORD_MESSAGE_LIMIT = 2000;
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds for bulk delete check
 
 // --- Basic Validation ---
 if (!token) { console.error("Missing DISCORD_BOT_TOKEN"); process.exit(1); }
@@ -25,24 +31,41 @@ if (!ahkScriptPath1) console.warn("Warning: AHK_SCRIPT_PATH_1 not set. !refresh 
 // --- Discord Client Setup ---
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds,            // Needed for GuildScheduledEvents, channels, roles etc.
-        GatewayIntentBits.GuildMessages,     // Receive commands
-        GatewayIntentBits.MessageContent,    // Read commands
-        GatewayIntentBits.GuildScheduledEvents, // Explicitly list needed intent
-        // GuildVoiceStates might NOT be needed anymore if not granting speaker role
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildScheduledEvents,
+        // GuildVoiceStates might NOT be needed anymore
     ],
 });
 
 // --- Global Variables ---
-let tvGuideTargetChannel = null; // Channel object for text posts
-let targetVoiceChannel = null;   // Channel object for the event
-let managedGuildEvent = null;    // Reference to the bot's managed scheduled event
+let tvGuideTargetChannel = null;
+let targetVoiceChannel = null;
+let managedGuildEvent = null;
+
+// --- Helper: Format 24hr time string (HH:MM) to 12hr (h:mm AM/PM) ---
+function formatTime12hr(timeString) {
+    if (!timeString || !timeString.includes(':')) return timeString; // Return original if invalid
+    const [hourStr, minuteStr] = timeString.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10); // Keep minutes as number for comparison if needed, format later
+
+    if (isNaN(hour) || isNaN(minute)) return timeString; // Invalid format
+
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    hour = hour ? hour : 12; // the hour '0' should be '12'
+
+    const minutePadded = String(minute).padStart(2, '0'); // Pad minutes for display
+    return `${hour}:${minutePadded} ${ampm}`;
+}
 
 // --- Helper: Format Message for TV Guide Posts (Scheduler ONLY) ---
-function formatTvGuideMessage(showData) { /* ... no change ... */
+function formatTvGuideMessage(showData) {
     if (!showData) return "Error: Schedule data missing.";
     if (showData.customMessage && typeof showData.customMessage === 'string') {
-        return showData.customMessage;
+        return showData.customMessage; // Return custom message directly
     }
     if (!showData.now || !showData.next) {
         console.warn(`[${new Date().toLocaleString()}] formatTvGuideMessage: Invalid standard entry`, JSON.stringify(showData));
@@ -55,7 +78,7 @@ function formatTvGuideMessage(showData) { /* ... no change ... */
     return message;
 }
 
-// --- Helper: Get Last Valid "Now Playing" Show Title (for Event Name) ---
+// --- Helper: Get Last Valid "Now Playing" Show Title ONLY (for Event Name) ---
 // Renamed from getStageTopicTitle
 function getCurrentShowTitle() {
     const now = new Date();
@@ -74,7 +97,6 @@ function getCurrentShowTitle() {
     }
     return lastValidNowTitle ? lastValidNowTitle.replace(/\*+/g, '').trim() : null; // Remove markdown
 }
-
 
 // --- Helper: Find or Create the Managed Guild Scheduled Event ---
 async function findOrCreateManagedEvent(guild) {
@@ -149,7 +171,6 @@ async function findOrCreateManagedEvent(guild) {
     }
 }
 
-
 // --- Helper: Update Managed Event Name ---
 async function updateEventName(newName) {
     if (!managedGuildEvent) {
@@ -219,9 +240,8 @@ async function updateEventName(newName) {
     }
 }
 
-
 // --- Helper: Execute AHK Script ---
-function runAhkScript(scriptPath, scriptName = 'script') { /* ... no change ... */
+function runAhkScript(scriptPath, scriptName = 'script') {
     return new Promise((resolve, reject) => {
         if (!scriptPath) {
             const errMsg = `Path for ${scriptName} not configured in .env file.`;
@@ -234,22 +254,55 @@ function runAhkScript(scriptPath, scriptName = 'script') { /* ... no change ... 
         exec(command, (error, stdout, stderr) => {
             if (error) {
                 console.error(`[${new Date().toLocaleString()}] !!! ERROR EXECUTING ${scriptName.toUpperCase()} (${formattedPath}) !!!`);
-                console.error(`➡️ Exit Code: ${error.code}`); console.error(`➡️ Signal: ${error.signal}`); console.error(`➡️ Error Message: ${error.message}`); console.error(error.stack || error); if (stderr) { console.error(`➡️ Stderr Output:\n${stderr}`); } console.error(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
+                console.error(`➡️ Exit Code: ${error.code}`);
+                console.error(`➡️ Signal: ${error.signal}`);
+                console.error(`➡️ Error Message: ${error.message}`);
+                console.error(error.stack || error);
+                if (stderr) {
+                    console.error(`➡️ Stderr Output:\n${stderr}`);
+                }
+                console.error(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
                 return reject(error);
             }
-            if (stderr) { console.warn(`[${new Date().toLocaleString()}] Stderr from ${scriptName} (${formattedPath}):\n${stderr}`); }
+            if (stderr) {
+                console.warn(`[${new Date().toLocaleString()}] Stderr from ${scriptName} (${formattedPath}):\n${stderr}`);
+            }
             console.log(`[${new Date().toLocaleString()}] Successfully executed ${scriptName} (${formattedPath}). Stdout:\n${stdout.trim() || '(No Stdout)'}`);
             resolve(stdout);
         });
     });
 }
 
-// --- Helper: Wait for a specified duration ---
-// function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); } // Keep if needed elsewhere
+// --- Helper: Send potentially long message, splitting if necessary ---
+async function sendSplitMessage(channel, content, prefix = '', suffix = '') {
+    if (!channel || !content) return;
+    const maxChunkLength = DISCORD_MESSAGE_LIMIT - prefix.length - suffix.length - 10; // Leave buffer for code blocks/newlines
+    if (content.length <= DISCORD_MESSAGE_LIMIT) {
+        await channel.send(prefix + content + suffix).catch(e => console.error("Error sending message chunk:", e));
+    } else {
+        console.log(`Message exceeds limit (${content.length}), attempting to split.`);
+        let currentChunk = '';
+        const lines = content.split('\n');
+        for (const line of lines) {
+            if (currentChunk.length + line.length + 1 <= maxChunkLength) { // +1 for newline
+                currentChunk += line + '\n';
+            } else {
+                // Send the current chunk
+                await channel.send(prefix + currentChunk + suffix).catch(e => console.error("Error sending message chunk:", e));
+                // Start a new chunk with the current line
+                currentChunk = line + '\n';
+            }
+        }
+        // Send the last remaining chunk
+        if (currentChunk.length > 0) {
+            await channel.send(prefix + currentChunk + suffix).catch(e => console.error("Error sending message chunk:", e));
+        }
+         console.log(`Message split and sent.`);
+    }
+}
 
 // --- Scheduling Logic (node-cron) ---
 function setupCronJobs() {
-    // Only proceed if EITHER text posts OR event updates are configured
     if (!tvGuideTargetChannel && !targetVoiceChannel) {
         console.log("Neither TV Guide post channel nor Event Voice channel are configured. No jobs scheduled.");
         return;
@@ -299,48 +352,45 @@ function setupCronJobs() {
     console.log(`Scheduled ${jobCount} jobs.`);
 }
 
+
 // --- Bot Event Handlers ---
 client.once(Events.ClientReady, async (readyClient) => {
     console.log(`\nLogged in as ${readyClient.user.tag}!`);
     client.user.setActivity('the TV Guide', { type: ActivityType.Watching });
+    let guildForEvent = null; // Need guild context
 
     // Fetch TV Guide Channel (for text posts)
-    if (tvGuideChannelId) { /* ... no change ... */
-        try { const channel = await readyClient.channels.fetch(tvGuideChannelId); if (channel && channel.isTextBased()) { tvGuideTargetChannel = channel; console.log(`-> TV Guide Post Channel OK: #${channel.name}`); } else { console.error(`-> TV Guide Post Channel Error: ID ${tvGuideChannelId} is not a valid text channel.`); } } catch (err) { console.error(`-> TV Guide Post Channel Error: Failed fetching ID ${tvGuideChannelId}: ${err.message}`); }
+    if (tvGuideChannelId) {
+        try {
+            const channel = await readyClient.channels.fetch(tvGuideChannelId);
+            if (channel && channel.isTextBased()) {
+                tvGuideTargetChannel = channel;
+                console.log(`-> TV Guide Post Channel OK: #${channel.name}`);
+            } else { console.error(`-> TV Guide Post Channel Error: ID ${tvGuideChannelId} is not a valid text channel.`); }
+        } catch (err) { console.error(`-> TV Guide Post Channel Error: Failed fetching ID ${tvGuideChannelId}: ${err.message}`); }
     }
 
     // Fetch Target Voice Channel (for event)
-    let guildForEvent = null; // Need guild context
     if (targetVoiceChannelId) {
         try {
             const channel = await readyClient.channels.fetch(targetVoiceChannelId);
             if (channel && channel.type === ChannelType.GuildVoice) {
-                 // Check permissions for the voice channel
                  const perms = channel.permissionsFor(readyClient.user);
                  if (!perms?.has(PermissionsBitField.Flags.ViewChannel)) console.warn(`   -> Event Channel Warning: Missing View Channel permission for #${channel.name}`);
-                 // Connect might not be strictly necessary just to link event, but good practice
                  if (!perms?.has(PermissionsBitField.Flags.Connect)) console.warn(`   -> Event Channel Warning: Missing Connect permission for #${channel.name}`);
-
-                targetVoiceChannel = channel; // Store the voice channel
-                guildForEvent = channel.guild; // Get guild from the channel
+                targetVoiceChannel = channel;
+                guildForEvent = channel.guild;
                 console.log(`-> Event Voice Channel OK: #${channel.name}`);
-
-                 // Check Manage Events permission at guild level
-                 const guildPerms = channel.guild.members.me?.permissions; // Get bot's permissions in the guild
+                 const guildPerms = channel.guild.members.me?.permissions;
                   if (!guildPerms?.has(PermissionsBitField.Flags.ManageEvents)) {
                        console.error(`   -> FATAL ERROR: Bot lacks 'Manage Events' permission in the server "${channel.guild.name}". Event functionality disabled.`);
-                       targetVoiceChannel = null; // Disable event functionality
+                       targetVoiceChannel = null;
                        guildForEvent = null;
                   } else {
                        console.log(`   -> 'Manage Events' permission confirmed.`);
                   }
-
-            } else {
-                console.error(`-> Event Voice Channel Error: ID ${targetVoiceChannelId} is not a valid Voice channel.`);
-            }
-        } catch (err) {
-            console.error(`-> Event Voice Channel Error: Failed fetching ID ${targetVoiceChannelId}: ${err.message}`);
-        }
+            } else { console.error(`-> Event Voice Channel Error: ID ${targetVoiceChannelId} is not a valid Voice channel.`); }
+        } catch (err) { console.error(`-> Event Voice Channel Error: Failed fetching ID ${targetVoiceChannelId}: ${err.message}`); }
     }
 
     // Find or Create the managed event AFTER fetching channels and confirming permissions
@@ -349,7 +399,6 @@ client.once(Events.ClientReady, async (readyClient) => {
          managedGuildEvent = await findOrCreateManagedEvent(guildForEvent);
          if (managedGuildEvent) {
               console.log(`[Event Manager] Initialization complete. Using event ID: ${managedGuildEvent.id}`);
-              // Optionally do an initial name update right away
               const initialTitle = getCurrentShowTitle();
               if(initialTitle) await updateEventName(initialTitle);
          } else {
@@ -372,10 +421,22 @@ client.on(Events.MessageCreate, async (message) => {
     const timestamp = `[${new Date().toLocaleString()}] CMD ${command}`;
 
     // --- Command: !now ---
-    if (command === 'now') { /* ... no change ... */
-         console.log(`${timestamp}: Received from ${message.author.tag} in #${message.channel.name}`); const getNowAndNextForCommand = () => { const now = new Date(); const dayOfWeek = now.getDay(); const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; const todaysSchedule = schedule[dayOfWeek]; if (!todaysSchedule) return null; const scheduledTimes = Object.keys(todaysSchedule).sort(); let lastValidData = null; for (const time of scheduledTimes) { if (time > currentTimeStr) break; const showData = todaysSchedule[time]; if (showData && showData.now && showData.next) { lastValidData = showData; } } return lastValidData; }; const showData = getNowAndNextForCommand(); let replyMessage = "Nothing seems to be scheduled right now."; if(showData){ replyMessage = `Now Playing: **${showData.now}**\nUp Next: **${showData.next}**`; if (showData.image && typeof showData.image === 'string' && showData.image.trim() !== '') { replyMessage += `\n${showData.image.trim()}`; } } await message.reply(replyMessage).catch(err => console.error(`${timestamp} Error replying to !now:`, err));
+    if (command === 'now') {
+         console.log(`${timestamp}: Received from ${message.author.tag} in #${message.channel.name}`);
+         const getNowAndNextForCommand = () => {
+            const now = new Date(); const dayOfWeek = now.getDay(); const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; const todaysSchedule = schedule[dayOfWeek]; if (!todaysSchedule) return null; const scheduledTimes = Object.keys(todaysSchedule).sort(); let lastValidData = null; for (const time of scheduledTimes) { if (time > currentTimeStr) break; const showData = todaysSchedule[time]; if (showData && showData.now && showData.next) { lastValidData = showData; } } return lastValidData;
+         }
+         const showData = getNowAndNextForCommand();
+         let replyMessage = "Nothing seems to be scheduled right now.";
+         if(showData){
+            replyMessage = `Now Playing: **${showData.now}**\nUp Next: **${showData.next}**`;
+             if (showData.image && typeof showData.image === 'string' && showData.image.trim() !== '') {
+                 replyMessage += `\n${showData.image.trim()}`;
+             }
+         }
+         await message.reply(replyMessage).catch(err => console.error(`${timestamp} Error replying to !now:`, err));
     }
-    // --- Command: !refresh (Simplified) ---
+    // --- Command: !refresh ---
     else if (command === 'refresh') {
          console.log(`${timestamp}: Received from ${message.author.tag} in #${message.channel.name}`);
          await message.reply("Attempting to refresh the stream event & trigger script!").catch(err => console.error(`${timestamp} Error sending initial reply:`, err));
@@ -411,9 +472,111 @@ client.on(Events.MessageCreate, async (message) => {
         // 3. Final Status Update
         await message.channel.send("🔄 Refresh sequence complete.").catch(err => console.error(`${timestamp} Error sending final status:`, err));
         console.log(`${timestamp}: Refresh sequence complete.`);
+    }
 
-    } // End of !refresh command
-      // REMOVED: !teststage command
+    // --- Command: !day ---
+    else if (command === 'day') {
+        console.log(`${timestamp}: Received !day from ${message.author.tag} in #${message.channel.name}`);
+        try {
+            const today = new Date().getDay();
+            const daySchedule = schedule[today];
+            const dayName = DAY_NAMES[today];
+            let scheduleOutput = `**Schedule for ${dayName}:**\n`;
+            let entriesFound = 0;
+            if (!daySchedule || Object.keys(daySchedule).length === 0) {
+                scheduleOutput += "No schedule found for today.";
+            } else {
+                const times = Object.keys(daySchedule).sort();
+                for (const time of times) {
+                    const showData = daySchedule[time];
+                    if (showData && showData.now) {
+                        const formattedTime = formatTime12hr(time);
+                        const title = showData.now.replace(/\*+/g, '').trim();
+                        const line = `${formattedTime} - ${title}\n`;
+                        scheduleOutput += line;
+                        entriesFound++;
+                    }
+                }
+                 if (entriesFound === 0) { scheduleOutput += "No specific shows listed for today."; }
+            }
+            await sendSplitMessage(message.channel, scheduleOutput, '```\n', '\n```');
+        } catch (error) { console.error(`${timestamp}: Error handling !day command:`, error); await message.reply("Sorry, an error occurred while fetching today's schedule.").catch(e=>console.error("Error replying:", e)); }
+    }
+
+    // --- Command: !week ---
+    else if (command === 'week') {
+        console.log(`${timestamp}: Received !week from ${message.author.tag} in #${message.channel.name}`);
+        try {
+            let fullWeekOutput = '';
+            let entriesFoundTotal = 0;
+            // Process Mon-Sat first
+            for (let dayIndex = 1; dayIndex <= 6; dayIndex++) {
+                const daySchedule = schedule[dayIndex];
+                const dayName = DAY_NAMES[dayIndex];
+                let dayOutput = `**${dayName}**\n`;
+                let entriesFoundThisDay = 0;
+                if (daySchedule && Object.keys(daySchedule).length > 0) {
+                    const times = Object.keys(daySchedule).sort();
+                    for (const time of times) {
+                        const showData = daySchedule[time];
+                        if (showData && showData.now) {
+                            const formattedTime = formatTime12hr(time);
+                            const title = showData.now.replace(/\*+/g, '').trim();
+                            dayOutput += `${formattedTime} - ${title}\n`;
+                            entriesFoundThisDay++;
+                        }
+                    }
+                }
+                if (entriesFoundThisDay > 0) { fullWeekOutput += dayOutput + '\n'; entriesFoundTotal++; }
+            }
+            // Process Sunday last
+             const sundayIndex = 0; const sundaySchedule = schedule[sundayIndex]; const sundayName = DAY_NAMES[sundayIndex]; let sundayOutput = `**${sundayName}**\n`; let entriesFoundSunday = 0; if (sundaySchedule && Object.keys(sundaySchedule).length > 0) { const times = Object.keys(sundaySchedule).sort(); for (const time of times) { const showData = sundaySchedule[time]; if (showData && showData.now) { const formattedTime = formatTime12hr(time); const title = showData.now.replace(/\*+/g, '').trim(); sundayOutput += `${formattedTime} - ${title}\n`; entriesFoundSunday++; } } } if (entriesFoundSunday > 0) { fullWeekOutput += sundayOutput + '\n'; entriesFoundTotal++; }
+
+            if (entriesFoundTotal === 0) { await message.reply("No schedule found for the entire week.").catch(e=>console.error("Error replying:", e)); } else { await sendSplitMessage(message.channel, fullWeekOutput, '```\n--- Weekly Schedule ---\n\n', '\n```'); }
+        } catch (error) { console.error(`${timestamp}: Error handling !week command:`, error); await message.reply("Sorry, an error occurred while fetching the weekly schedule.").catch(e=>console.error("Error replying:", e)); }
+    }
+
+    // --- Command: !movies ---
+    else if (command === 'movies') {
+        console.log(`${timestamp}: Received !movies from ${message.author.tag} in #${message.channel.name}`);
+        try {
+            let movieListOutput = '';
+            let moviesFound = 0;
+            const moviePrefix = "MOVIE:";
+            // Process Mon-Sat first
+            for (let dayIndex = 1; dayIndex <= 6; dayIndex++) {
+                const daySchedule = schedule[dayIndex]; if (!daySchedule) continue; const times = Object.keys(daySchedule).sort(); for (const time of times) { const showData = daySchedule[time]; if (showData && showData.now && showData.now.trim().toUpperCase().startsWith(moviePrefix)) { const dayName = DAY_NAMES[dayIndex]; const formattedTime = formatTime12hr(time); const movieTitle = showData.now.trim().substring(moviePrefix.length).trim(); movieListOutput += `${dayName}, ${formattedTime} - ${movieTitle}\n`; moviesFound++; } }
+            }
+            // Process Sunday last
+            const sundayIndex = 0; const sundaySchedule = schedule[sundayIndex]; if (sundaySchedule) { const times = Object.keys(sundaySchedule).sort(); for (const time of times) { const showData = sundaySchedule[time]; if (showData && showData.now && showData.now.trim().toUpperCase().startsWith(moviePrefix)) { const dayName = DAY_NAMES[sundayIndex]; const formattedTime = formatTime12hr(time); const movieTitle = showData.now.trim().substring(moviePrefix.length).trim(); movieListOutput += `${dayName}, ${formattedTime} - ${movieTitle}\n`; moviesFound++; } } }
+
+            if (moviesFound === 0) { await message.reply("No entries marked with 'MOVIE:' found in the schedule.").catch(e=>console.error("Error replying:", e)); } else { await sendSplitMessage(message.channel, movieListOutput, '```\n--- Movie Listings ---\n\n', '\n```'); }
+        } catch (error) { console.error(`${timestamp}: Error handling !movies command:`, error); await message.reply("Sorry, an error occurred while fetching the movie list.").catch(e=>console.error("Error replying:", e)); }
+    }
+
+    // --- Command: !clear ---
+    else if (command === 'clear') {
+        console.log(`${timestamp}: Received !clear from ${message.author.tag} in #${message.channel.name}`);
+        // 1. Authorization Check (User Permissions)
+        if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageMessages)) { console.warn(`${timestamp}: Denied !clear from ${message.author.tag} - User lacks Manage Messages permission.`); await message.reply("You need the 'Manage Messages' permission to use this command.").catch(e => console.error("Error replying:", e)); return; }
+        // 2. Bot Permission Check
+        const botPermissions = message.guild.members.me?.permissionsIn(message.channel); if (!botPermissions?.has(PermissionsBitField.Flags.ManageMessages)) { console.error(`${timestamp}: Failed !clear - Bot lacks Manage Messages permission in #${message.channel.name}.`); await message.reply("I don't have the 'Manage Messages' permission in this channel to delete messages.").catch(e => console.error("Error replying:", e)); return; } if (!botPermissions?.has(PermissionsBitField.Flags.ReadMessageHistory)) { console.error(`${timestamp}: Failed !clear - Bot lacks Read Message History permission in #${message.channel.name}.`); await message.reply("I don't have the 'Read Message History' permission in this channel, which I need to find messages to delete.").catch(e => console.error("Error replying:", e)); return; }
+        // 3. Calculate Time Threshold
+        const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+        // 4. Fetch Messages
+        let messagesToDelete; let replyMsg = null; try { replyMsg = await message.reply(`🧹 Fetching my messages from the last 12 hours...`).catch(e => {console.error("Error sending initial reply:", e); return null;}); console.log(`${timestamp}: Fetching messages in #${message.channel.name}...`); const fetchedMessages = await message.channel.messages.fetch({ limit: 100 });
+            // 5. Filter Messages
+            messagesToDelete = fetchedMessages.filter(msg => msg.author.id === client.user.id && msg.createdTimestamp > twelveHoursAgo && (Date.now() - msg.createdTimestamp) < FOURTEEN_DAYS_MS);
+            console.log(`${timestamp}: Found ${messagesToDelete.size} messages to delete.`);
+            if (messagesToDelete.size === 0) { if(replyMsg) await replyMsg.edit("🧹 No messages from me found in the last 12 hours to delete.").catch(e => console.error("Error editing reply:", e)); else await message.channel.send("🧹 No messages from me found in the last 12 hours to delete.").catch(e => console.error("Error replying:", e)); return; }
+            // 6. Bulk Delete
+            console.log(`${timestamp}: Attempting to bulk delete ${messagesToDelete.size} messages...`); const deletedMessages = await message.channel.bulkDelete(messagesToDelete, true); const confirmationText = `✅ Successfully deleted ${deletedMessages.size} message(s).`; console.log(`${timestamp}: ${confirmationText}`);
+            // 7. Send Confirmation & Cleanup
+             if(replyMsg) await replyMsg.edit(confirmationText).catch(e => console.error("Error editing reply:", e)); else await message.channel.send(confirmationText).catch(e => console.error("Error sending reply:", e));
+        } catch (error) { console.error(`${timestamp}: Error during !clear operation:`, error); const errorText = "❌ An error occurred while trying to delete messages."; if(replyMsg) await replyMsg.edit(errorText).catch(e => console.error("Error editing reply:", e)); else await message.channel.send(errorText).catch(e => console.error("Error replying:", e)); if (error.code === 50034) { console.error("   -> Note: Attempted to delete messages older than 14 days."); } }
+    }
+
+
 }); // End of messageCreate
 
 // --- Error Handling & Login ---

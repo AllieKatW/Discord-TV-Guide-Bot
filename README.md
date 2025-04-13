@@ -10,7 +10,7 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
 *   **Automatic Schedule Posting:** Posts messages to a specific text channel based on a defined schedule (ex. every 30-60 minutes, `"Now Playing: The Simpsons, Up Next: House"`)
 *   **Scheduled Event Updates:** Maintains a Discord Voice Channel Event and automatically updates its name with the "Now Playing" show title according to the schedule.
 *   **`!now` Command:** Users can type `!now` in any channel the bot can read to instantly see the current program based on the schedule.
-*   **`!day`, `!week` and `!movies` Commands:** These will command the bot to post either the current day's schedule, the weekly schedule or the weekly movie schedule.
+*   **`!day`, `!week` and `!movies` Commands:** These will command the bot to post either the current day's schedule, the weekly schedule or the weekly movie schedule in 12 hour format.
 *   **`!clear` Command:** Clears the last 12 hours of bot messages from the text channel.
 *   **`!refresh` Command:** Runs a script of your choice to automatically refresh/fix your streaming setup when things break and you're not around to fix it manually (ex. Run a .ahk script that force closes your player, reopens it, switches window focus to Discord and triggers Discord keybinds to connect to the Voice Channel of your choice and resume Screen Share). Intended only for use on dedicated streaming machines.
     *   PLEASE NOTE: **This is likely against Discord TOS and can be dangerous if you don't know what you're doing** so I will not be including a sample script. USE AT YOUR OWN DISCRETION. There are no permissions checks in place for this so it can be used by **ANY** user.
@@ -107,9 +107,9 @@ Recommended for use with projects such as [VideoScheduler](https://github.com/Ja
     *   Type `!now` in any channel the bot can read.
     *   The bot will reply with the "Now Playing" and "Up Next" information for the schedule slot closest to the current time. It will ignore any `customMessage` entries in the schedule for this command.
 *   **`!day`, `!week` Commands:**
-    *   The bot will respond with either the current day's schedule or the full week's schedule. As a personal preference, Sunday is placed at the end of the list.
+    *   The bot will respond with either the current day's schedule or the full week's schedule in 12 hour format. As a personal preference, Sunday is placed at the end of the list.
 *   **`!movies` Command:**
-    *   The bot will respond with the week's movie schedule. Movies in your schedule must begin with the prefix `MOVIE:` in order for this to work. As with the other schedule commands, Sunday is placed at the end of the list.
+    *   The bot will respond with the week's movie schedule in 12 hour format. Movies in your schedule must begin with the prefix `MOVIE:` in order for this to work. As with the other schedule commands, Sunday is placed at the end of the list.
 *   **`!clear` Command:**
     *   Removes the last 12 hours worth of bot messages from the designated text channel. The user must have message removal permissions for this command to work.
 *   **`!refresh` Command:**

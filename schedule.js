@@ -16,7 +16,7 @@ const schedule = {
         "13:00": { now: "South Park", next: "Invader Zim" },
         // Example Custom Message (will ONLY be posted, not used for !now or event name)
         "13:30": { customMessage: "**Reminder:** Server meeting at 2PM!" },
-        "14:00": { now: "Afternoon Movie", next: "News Update" },
+        "14:00": { now: "MOVIE: Spider-Man", next: "News Update" },
         // ...
     },
     // ... other days (2, 4, 5, 6) ...

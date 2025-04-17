@@ -1,131 +1,149 @@
-# Discord TV Guide Bot
+# Discord TV Channel Bot (BrowserBot Edition)
 
-This bot helps manage and display a TV schedule directly within your Discord server.
-It can automatically post schedule updates to a designated text channel and also update the name of a Voice Channel Event to show the current program.
-You can also manually trigger a refresh script (I use AutoHotkey but you can use whatever you like) for moments when your stream freezes/crashes.
-Recommended for use with projects such as [VideoScheduler](https://github.com/JasonCampbell256/VideoScheduler), [ErsatzTV](https://github.com/ErsatzTV/ErsatzTV), [DisqueTV](https://github.com/vexorian/dizquetv) or [Tunarr](https://github.com/chrisbenincasa/tunarr).
+This bot helps manage and display a TV schedule within your Discord server, but now includes an enhanced **Custom Channel Mode**. It automatically posts schedule updates, manages a corresponding Discord Scheduled Event, and allows users (via polls or admin commands) to switch to a "Custom Channel" where local files or YouTube videos can be played via external scripts (like AutoHotkey).
 
-## Features
+It integrates with `yt-dlp` for downloading YouTube content, provides an interactive remote control, file browsing, skip voting, and more, making it suitable for managing community streams driven by tools like [VideoScheduler](https://github.com/JasonCampbell256/VideoScheduler), [ErsatzTV](https://github.com/ErsatzTV/ErsatzTV), [DizqueTV](https://github.com/vexorian/dizquetv) or [Tunarr](https://github.com/chrisbenincasa/tunarr), while also offering flexible manual control.
 
-*   **Automatic Schedule Posting:** Posts messages to a specific text channel based on a defined schedule (ex. every 30-60 minutes, `"Now Playing: The Simpsons, Up Next: House"`)
-*   **Scheduled Event Updates:** Maintains a Discord Voice Channel Event and automatically updates its name with the "Now Playing" show title according to the schedule.
-*   **`!now` Command:** Users can type `!now` in any channel the bot can read to instantly see the current program based on the schedule.
-*   **`!day`, `!week` and `!movies` Commands:** These will command the bot to post either the current day's schedule, the weekly schedule or the weekly movie schedule in 12 hour format.
-*   **`!clear` Command:** Clears the last 12 hours of bot messages from the text channel.
-*   **`!refresh` Command:** Runs a script of your choice to automatically refresh/fix your streaming setup when things break and you're not around to fix it manually (ex. Run a .ahk script that force closes your player, reopens it, switches window focus to Discord and triggers Discord keybinds to connect to the Voice Channel of your choice and resume Screen Share). Intended only for use on dedicated streaming machines.
-    *   PLEASE NOTE: **This is likely against Discord TOS and can be dangerous if you don't know what you're doing** so I will not be including a sample script. USE AT YOUR OWN DISCRETION. There are no permissions checks in place for this so it can be used by **ANY** user.
-*   **Customizable Schedule:** Easily define your weekly schedule (including show titles, images, and custom messages) in a separate file.
+## Core Features
+
+*   **Scheduled Stream Management:**
+    *   Automatically posts "Now Playing / Up Next" messages to a designated text channel based on `schedule.js`.
+    *   Manages a Discord Scheduled Event, updating its name to reflect the current show (Scheduled Mode) or playing content (Custom Mode).
+*   **Custom Channel Mode:**
+    *   Allows switching from the schedule to play local files or queued YouTube videos.
+    *   Features a "Still Watching?" prompt after a configurable duration.
+    *   Detects the currently playing VLC window title (Windows-only) to update the event name.
+    *   Requires external scripts (e.g., AutoHotkey) to handle stream switching and file opening.
+*   **Interactive Remote (`!remote`):**
+    *   Provides buttons for common actions: Now Playing, Refresh, Schedule, Help, Mode Switching, Skipping, YouTube Downloads, File Browsing, Admin Controls.
+*   **YouTube Download Queue (`!youtube`, Remote Button):**
+    *   Queue YouTube videos or playlists for download using `yt-dlp`.
+    *   Supports specifying subfolders for downloads.
+    *   Includes progress updates and cancellation (`!cancel`, `!cancelall`, Remote Buttons).
+    *   Requires `ffmpeg` for reliable post-processing/re-encoding.
+*   **File Browsing (`!browse`, Remote Button):**
+    *   Interactive interface to browse downloaded video files within the specified folder.
+    *   Supports navigating subfolders and searching within the current directory.
+    *   Requires user confirmation via poll before attempting to play a file using an external script.
+*   **Polling System:**
+    *   Vote to switch between Scheduled (`!ptv`) and Custom (`!custom`) modes.
+    *   Vote to skip the current item (`!skip`) in Custom Mode (with bypass for 2 users in VC).
+*   **External Script Integration (e.g., AutoHotkey):**
+    *   Triggers specific `.ahk` (or other) scripts for:
+        *   Refreshing the scheduled stream (`!refresh` in Scheduled Mode).
+        *   Refreshing during Custom Mode (`!refresh` in Custom Mode).
+        *   Switching *to* Custom Mode.
+        *   Switching *back* from Custom Mode.
+        *   Skipping the current item in Custom Mode.
+        *   Opening a selected file from the browser.
+*   **Admin Commands:**
+    *   `!toggle`: Force switch between modes *without* running AHK scripts (useful for state correction).
+    *   `!clear`: Clear recent bot messages from the current channel.
+    *   `!cancelall`: Cancel all active and queued YouTube downloads.
+*   **Schedule Viewing (`!schedule`, Remote Button):**
+    *   View schedule for Today, This Week, or just Movie listings for the week.
+*   **Customizable Schedule:** Define your weekly schedule, including custom messages and images, in `schedule.js`.
 
 ## Setup
 
 ### Prerequisites:
 
-*   **Node.js:** Ensure you have Node.js (LTS version recommended) installed. Download from [nodejs.org](https://nodejs.org/).
-*   **Discord Bot Token:** You need a Bot Application and its Token from the [Discord Developer Portal](https://discord.com/developers/applications). Make sure the bot has the necessary Privileged Gateway Intents enabled (see below).
-*   **Discord Channel IDs:** Enable Developer Mode in Discord by visiting your Discord settings and going to "Advanced". You can then right click on any channel and select "Copy ID". You'll need this for the text channel where you want scheduled posts to appear and the voice channel where you want the event to be managed.
-*   **AutoHotkey:** If you plan to use the `!refresh` command, [AutoHotkey](https://www.autohotkey.com/) (or your scripting language of choice) must be installed on the machine where the bot script will run, and the script path must be correct.
-*   **AutoHotkey Script:** Prepare your `.ahk` script that you want the `!refresh` command to execute.
+*   **Node.js:** Version 18.x or newer recommended. Download from [nodejs.org](https://nodejs.org/).
+*   **npm:** Node Package Manager (usually included with Node.js).
+*   **Discord Bot Token:** Create a Bot Application on the [Discord Developer Portal](https://discord.com/developers/applications). Ensure Privileged Gateway Intents are enabled (see below).
+*   **Discord Channel IDs:** Enable Developer Mode in Discord (User Settings -> Advanced). Right-click channels/voice channels to copy their IDs for the `.env` configuration.
+*   **(Optional but Recommended) AutoHotkey (Windows):** Required if using the `.ahk` script features for stream control, file opening, etc. Download from [www.autohotkey.com](https://www.autohotkey.com/). Ensure it's installed and associated with `.ahk` files on the machine running the bot. For non-Windows, you'd need equivalent scripting solutions and adjust the `runAhkScript` function or replace script execution logic.
+*   **(Optional but Recommended) `yt-dlp`:** Required for the `!youtube` command and download queue. Install from [yt-dlp GitHub](https://github.com/yt-dlp/yt-dlp). Ensure the executable is in your system's PATH or provide the full path in `.env`.
+*   **(Optional but Recommended) `ffmpeg`:** Required for reliable post-processing (re-encoding) of `yt-dlp` downloads. Download from [ffmpeg.org](https://ffmpeg.org/download.html). Ensure the executable is in your system's PATH or provide the full path in `.env`.
 
 ### Project Setup:
 
-*   **Install Dependencies:** Run the following command to install the necessary Node.js libraries:
+1.  **Download/Clone:** Get the bot files (`bot.js`, `schedule.js`, `package.json`, this README).
+2.  **Install Dependencies:** Open a terminal/command prompt in the project directory and run:
     ```bash
     npm install
     ```
-    *(This installs discord.js for interacting with Discord, node-cron for scheduling, and dotenv for reading the configuration file.)*
+    *(Installs `discord.js`, `dotenv`, `node-cron`, `yt-dlp-exec`, and `nodemon` for development)*
+3.  **Create Scripts:** Create the necessary AutoHotkey (or equivalent) scripts that will be triggered by the bot for refreshing, switching modes, skipping, and opening files.
 
 ### Configuration Files:
 
-*   **`.env`:** Edit the `.env` file in the project root and add your configuration details:
-    ```dotenv
-    # .env
-    DISCORD_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
-    DISCORD_CHANNEL_ID=YOUR_TVGUIDE_POST_CHANNEL_ID_HERE
-    TARGET_VOICE_CHANNEL_ID=YOUR_VOICE_CHANNEL_ID_HERE
-    AHK_SCRIPT_PATH_1=C:\\Path\\To\\Your\\refresh_script.ahk # Use double backslashes or forward slashes
-    ```
-    *Replace placeholder values with your actual IDs and paths.*
+*   **`.env`:** Replace the placeholders with your own configuration.
 
-*   **`schedule.js`:** Edit the file named `schedule.js` in the project root and define your TV schedule. Use the 24-hour format (HH:MM) and days (0=Sunday, 1=Monday, ..., 6=Saturday).
-     *   You can also add images to be posted after the message or use Custom Messages for things like trivia or promotional posts. Custom Messages will be ignored in `!now` commands and event title updates.
-    ```javascript
-    // schedule.js
-    const schedule = {
-        // Day 0: Sunday
-        0: {
-            "09:00": { now: "Morning Cartoons", next: "Sunday News" },
-            // ...
-        },
-        // Day 1: Monday
-        1: {
-            "10:00": { now: "Morning Show", next: "Cooking Time", image: "https://example.com/images/cooking.png" },
-            // ...
-        },
-        // Day 3: Wednesday
-        3: {
-            "12:30": { now: "Scrubs", next: "South Park" },
-            "13:00": { now: "South Park", next: "Invader Zim" },
-            // Example Custom Message (will ONLY be posted, not used for !now or event name)
-            "13:30": { customMessage: "**Reminder:** Server meeting at 2PM!" },
-            "14:00": { now: "MOVIE: Spider-Man", next: "News Update" },
-            // ...
-        },
-        // ... other days (2, 4, 5, 6) ...
-    };
-    module.exports = schedule;
-    ```
+*   **`schedule.js`:** Edit this file to define your weekly TV schedule. Use 24-hour format (HH:MM) and days (0=Sunday, ..., 6=Saturday).
+    *   Standard entries need `now` and `next` fields (e.g., `"09:00": { now: "Show A", next: "Show B" }`).
+    *   You can add an `image` field with a URL for image posts.
+    *   You can use `customMessage` for entries that only post text and don't represent a playable show (e.g., `"13:30": { customMessage: "**Reminder:** Server meeting!" }`). These are ignored by `!now` and event name updates.
+    *   Mark movies with a prefix like `MOVIE:` in the `now` field if you want the `!schedule` (Movies) view to work (e.g., `"14:00": { now: "MOVIE: Spider-Man", next: "News" }`).
 
 ### Discord Bot Permissions & Intents:
 
 *   Go to the Discord Developer Portal -> Your Bot Application -> "Bot" tab.
-*   Under "Privileged Gateway Intents", ensure **SERVER MEMBERS INTENT** and **MESSAGE CONTENT INTENT** are enabled.
-*   Under "OAuth2" -> "URL Generator", select the `bot` scope.
+*   Under "Privileged Gateway Intents", enable:
+    *   `PRESENCE INTENT` (Potentially needed by some discord.js v14 features, though often not strictly required unless monitoring user status) - *Check if truly needed, might be optional.*
+    *   `SERVER MEMBERS INTENT` (Needed for accurate member/role checks, depending on usage).
+    *   **`MESSAGE CONTENT INTENT` (REQUIRED for reading commands like `!now`)**
+*   Under "OAuth2" -> "URL Generator", select the `bot` scope and `application.commands` (if planning slash commands later, optional for now).
 *   Under "Bot Permissions", select:
     *   `View Channel`
     *   `Send Messages`
-    *   `Manage Events`
-    *   `Connect` (for the Voice Channel Event)
-*   Generate the URL and invite the bot to your server with these permissions.
-*   Also ensure the bot's role in the server has these permissions at the server level or channel level for the specific target channels.
+    *   `Manage Events` (Crucial for scheduled event updates)
+    *   `Connect` (Needed for the event to link to the voice channel)
+    *   `Manage Messages` (Needed for `!clear` / remote clear button)
+    *   `Read Message History` (Needed for `!clear` / remote clear button)
+*   Generate the invite URL and add the bot to your server.
+*   **In your Discord Server Settings:** Ensure the bot's **Role** has the necessary permissions listed above, especially in the channels specified in your `.env` file (`DISCORD_CHANNEL_ID`, `TARGET_VOICE_CHANNEL_ID`). `Manage Events` is often a server-wide permission.
 
 ## Running the Bot
 
-*   Open a terminal or command prompt in your project folder (`discord-tv-guide`).
-*   Run the bot using: `node bot.js`
-*   The console will show logs as the bot connects, fetches channels, and sets up scheduled tasks. Keep this window open.
-*   **(Optional)**: Use a process manager like `pm2` to keep the bot running reliably:
-    *   Install pm2: `npm install pm2 -g`
-    *   Start the bot: `pm2 start bot.js --name "tv-guide-bot"`
-    *   Monitor: `pm2 list` or `pm2 logs tv-guide-bot`
-    *   Stop: `pm2 stop tv-guide-bot`
+1.  Open a terminal or command prompt in your project folder.
+2.  **For regular use:**
+    ```bash
+    npm start
+    ```
+    *(Runs `node bot.js`)*
+3.  **For development (auto-restarts on file changes):**
+    ```bash
+    npm run dev
+    ```
+    *(Runs `nodemon bot.js`)*
+4.  The console will show logs. Keep the terminal window open.
+5.  **(Recommended for Production):** Use a process manager like `pm2` to keep the bot running reliably in the background.
+    *   Install: `npm install pm2 -g`
+    *   Start: `pm2 start bot.js --name "tv-channel-bot"`
+    *   Manage: `pm2 list`, `pm2 logs tv-channel-bot`, `pm2 restart tv-channel-bot`, `pm2 stop tv-channel-bot`
 
 ## Usage
 
-*   **Automatic Posts:** The bot will automatically post schedule updates to the channel specified by `DISCORD_CHANNEL_ID` according to the `schedule.js` file.
-*   **Event Name Updates:** The bot will automatically update the name of the Guild Scheduled Event linked to the voice channel specified by `TARGET_VOICE_CHANNEL_ID` whenever a new "Now Playing" show starts according to the schedule. If an event does not exist then it will create one. The bot will only edit events that it created itself, not by other users.
-*   **`!now` Command:**
-    *   Type `!now` in any channel the bot can read.
-    *   The bot will reply with the "Now Playing" and "Up Next" information for the schedule slot closest to the current time. It will ignore any `customMessage` entries in the schedule for this command.
-*   **`!day`, `!week` Commands:**
-    *   The bot will respond with either the current day's schedule or the full week's schedule in 12 hour format. As a personal preference, Sunday is placed at the end of the list.
-*   **`!movies` Command:**
-    *   The bot will respond with the week's movie schedule in 12 hour format. Movies in your schedule must begin with the prefix `MOVIE:` in order for this to work. As with the other schedule commands, Sunday is placed at the end of the list.
-*   **`!clear` Command:**
-    *   Removes the last 12 hours worth of bot messages from the designated text channel. The user must have message removal permissions for this command to work.
-*   **`!refresh` Command:**
-    *   Type `!refresh` in any channel the bot can read.
-    *   The bot will:
-        1.  Reply with a confirmation message.
-        2.  Update the Voice Channel Event name based on the current "Now Playing" schedule.
-        3.  Run the AutoHotkey script specified by `AHK_SCRIPT_PATH_1`.
-        4.  Reply with status updates during the process.
+*   **Primary Interaction:** Use the `!remote` command to get interactive buttons for most actions.
+*   **Automatic Actions:**
+    *   Schedule posts appear in the `DISCORD_CHANNEL_ID` channel.
+    *   The Discord Scheduled Event in `TARGET_VOICE_CHANNEL_ID` updates automatically based on the schedule or Custom Channel activity.
+*   **Commands:** (Also accessible via `!remote`)
+    *   `!remote`: Show interactive remote control buttons.
+    *   `!now`: Display the currently scheduled show or detected VLC title (Custom Mode). Updates event name.
+    *   `!refresh`: Trigger the appropriate refresh script (Scheduled or Custom Mode) and update event name.
+    *   `!schedule`: Show buttons to view Today's, This Week's, or This Week's Movie schedule.
+    *   `!youtube <URL> [Subfolder Name]`: Add a YouTube video/playlist to the download queue. Optionally specify a subfolder within `VIDEO_DOWNLOAD_FOLDER`.
+    *   `!help`: Show help information and buttons.
+    *   `!custom`: Start a public poll to switch to Custom Channel mode.
+    *   `!ptv`: Start a public poll to switch back to the scheduled program.
+    *   `!skip`: Start a public poll to skip the current item in Custom Mode. (Bypassed if only 2 non-bot users are in the target voice channel).
+    *   `!browse`: Start an interactive file browser for the `VIDEO_DOWNLOAD_FOLDER` (Custom Mode only). Requires poll to play selection.
+    *   `!cancel`: Cancel your own active and queued YouTube downloads.
+    *   `!clear` (Admin): Delete the bot's messages from the last 12 hours in the current channel.
+    *   `!toggle` (Admin): Force switch between Scheduled/Custom modes *without* running AHK scripts.
+    *   `!cancelall` (Admin): Cancel *all* active and queued YouTube downloads.
+*   **Custom Channel Mode:** Activated via `!custom` poll or `!toggle`. The bot stops following the schedule and relies on VLC title detection (Windows) or manual interaction (`!skip`, `!browse`). A timer prompts users to confirm activity or return to the schedule.
+*   **Polls:** Mode switching (`!custom`/`!ptv`), skipping (`!skip`), and file selection (`!browse`) require successful polls (majority vote) unless bypassed (skip) or admin command is used.
 
 ## Notes & Troubleshooting
-
-*   **Why Voice Channels/Events instead of Stages/Channel Status?:** Stages have smaller screen real estate and Discord doesn't allow you to set voice channel statuses via API.
-*   **Timezones:** The bot uses the local timezone of the machine it's running on. If your schedule is based on a different timezone, you might need to adjust the cron settings or use timezone handling in Node.js.
-*   **Schedule Changes:** If you modify `schedule.js` or `.env`, you must restart the `node bot.js` process (or use `pm2 restart tv-guide-bot` if you have `pm2` set up) for the changes to take effect.
-*   **Permissions:** Most issues arise from missing permissions. Double-check that the bot has `View Channel`, `Send Messages`, `Manage Events`, and `Connect` permissions at the server or channel level, as needed.
-*   **Event Management:** The bot tries to manage one persistent event. If you manually delete the event created by the bot, it will create a new one on the next schedule trigger or `!refresh` command.
-*   **AHK Scripts:** Ensure the paths in `.env` are correct and the Node.js process has permission to execute those `.ahk` files. If you encounter errors during script execution, check the console logs for specific details provided by the `exec` function.
-*   **Error Messages:** If you see error messages in the console, review them carefully. They often provide specific Discord API error codes or hints about permission issues (`50013` is a common permission error).
+*   **Discord TOS:** Be mindful that automating user actions (like controlling Discord clients via AHK for screensharing) might be against Discord's Terms of Service. Use scripting features responsibly.
+*   **AHK/Scripting:** This bot *relies* on external scripts (like AutoHotkey) for core functionality like switching streams, refreshing, skipping, and opening files. Ensure these scripts exist, paths in `.env` are correct, and the bot process has permission to execute them. The bot only triggers the scripts; the scripts themselves must perform the desired actions (e.g., interact with VLC, OBS, etc.).
+*   **VLC Title Detection:** This feature is **Windows-only** as it uses the `tasklist` command. It requires VLC media player to be running and displaying a title. The title is cleaned (suffix/extension removed) for event names.
+*   **YouTube Downloads:** Requires `yt-dlp` installed and accessible. `ffmpeg` is highly recommended for converting downloads to a compatible format (`.mp4` H.264/AAC by default) and should be configured in `.env` or be in the system PATH. Downloads save to `VIDEO_DOWNLOAD_FOLDER`. Large playlists are limited (`PLAYLIST_VIDEO_LIMIT`).
+*   **File Paths:** Double-check all paths in `.env`. Use absolute paths or paths relative to where `bot.js` is executed. Use the correct path separators for your OS (`\` for Windows, `/` for Linux/macOS).
+*   **Permissions:** Most issues stem from missing Discord permissions (Intents in Dev Portal, Role permissions in Server Settings) or file system permissions (bot can't read/write/execute files/scripts). Check console logs for `50013` (Discord Permissions) or `EACCES`/`ENOENT` (File System) errors.
+*   **Timezones:** `node-cron` scheduling uses the timezone specified in `bot.js` (currently hardcoded to `America/New_York`). Ensure this matches your desired schedule timing or adjust the code.
+*   **State:** The bot's mode (`isCustomModeActive`) is stored in memory and resets on restart unless persistence is added. Use `!toggle` if the bot's state gets out of sync with the actual stream state.
+*   **Restarting:** Changes to `.env` or `schedule.js` require restarting the bot process (`npm start` or `pm2 restart <name>`).

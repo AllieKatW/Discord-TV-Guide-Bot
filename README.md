@@ -49,7 +49,6 @@ It integrates with `yt-dlp` for downloading YouTube content, provides an interac
 ### Prerequisites:
 
 *   **Node.js:** Version 18.x or newer recommended. Download from [nodejs.org](https://nodejs.org/).
-*   **npm:** Node Package Manager (usually included with Node.js).
 *   **Discord Bot Token:** Create a Bot Application on the [Discord Developer Portal](https://discord.com/developers/applications). Ensure Privileged Gateway Intents are enabled (see below).
 *   **Discord Channel IDs:** Enable Developer Mode in Discord (User Settings -> Advanced). Right-click channels/voice channels to copy their IDs for the `.env` configuration.
 *   **(Optional but Recommended) AutoHotkey (Windows):** Required if using the `.ahk` script features for stream control, file opening, etc. Download from [www.autohotkey.com](https://www.autohotkey.com/). Ensure it's installed and associated with `.ahk` files on the machine running the bot. For non-Windows, you'd need equivalent scripting solutions and adjust the `runAhkScript` function or replace script execution logic.

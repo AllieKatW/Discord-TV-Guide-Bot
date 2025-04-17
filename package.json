@@ -1,29 +1,36 @@
 {
-  "name": "discord-tv-guide-bot",
+  "name": "discord-tv-channel-bot",
   "version": "1.0.0",
-  "description": "A Discord bot that posts TV guide schedules, updates voice channel events, and runs refresh tasks.",
+  "description": "A Discord bot managing a scheduled stream with custom channel features (local/YouTube), AHK integration, and interactive commands.",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [
-    "discord",
-    "bot",
-    "schedule",
-    "tv guide",
-    "cron",
-    "discord.js",
-    "events"
-  ],
-  "author": "Allie Kat",
-  "license": "MIT",
-  "engines": {
-    "node": ">=16.9.0"
+    "dev": "nodemon bot.js"
   },
   "dependencies": {
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
-    "node-cron": "^3.0.3"
-  }
+    "node-cron": "^3.0.3",
+    "yt-dlp-exec": "^3.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Allie Kat",
+  "license": "MIT",
+  "private": true,
+  "keywords": [
+    "discord",
+    "bot",
+    "schedule",
+    "stream",
+    "youtube",
+    "vlc",
+    "autohotkey",
+    "yt-dlp",
+    "discord.js"
+  ]
 }
